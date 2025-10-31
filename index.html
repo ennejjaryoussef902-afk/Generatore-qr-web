@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generatore di QR Code</title>
+    <!-- Caricamento di Tailwind CSS per lo styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configurazione del font Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        /* Stile personalizzato per il pulsante di download */
+        .download-button:active {
+            transform: translateY(1px);
+        }
+        .qr-placeholder {
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af; /* gray-400 */
+        }
+    </style>
+    <!-- Caricamento della libreria qrcode.js per la generazione -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Contenitore principale (Card) -->
+    <div class="bg-white shadow-2xl rounded-xl p-6 md:p-10 w-full max-w-lg transition-all duration-300">
+        
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Generatore di QR Code</h1>
+        
+        <!-- Area di input -->
+        <div class="mb-5">
+            <label for="dataInput" class="block text-sm font-medium text-gray-700 mb-2">
+                Inserisci Testo o URL:
+            </label>
+            <input 
+                type="text" 
+                id="dataInput" 
+                placeholder="https://google.com o il tuo testo qui..." 
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-800 transition duration-150"
+            >
+        </div>
+
+        <!-- Area messaggi (sostituisce messagebox) -->
+        <div id="messageArea" class="mb-5 p-3 text-sm rounded-lg transition-all duration-300 hidden"></div>
+
+        <!-- Pulsante di generazione -->
+        <button 
+            id="generateButton"
+            onclick="generateQRCode()" 
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300"
+        >
+            Genera QR Code
+        </button>
+
+        <!-- Area di visualizzazione del QR Code -->
+        <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Il tuo QR Code</h2>
+            
+            <!-- Contenitore per il QR Code generato -->
+            <div id="qrcodeContainer" class="bg-gray-100 p-4 rounded-xl shadow-inner qr-placeholder mx-auto max-w-xs">
+                <span id="qrPlaceholderText" class="text-base">Il QR Code apparirà qui.</span>
+            </div>
+
+            <!-- Pulsante di salvataggio (inizialmente nascosto) -->
+            <button 
+                id="saveButton"
+                onclick="saveQRCode()"
+                class="hidden download-button mt-6 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg shadow-lg transition duration-200 focus:outline-none focus:ring-4 focus:ring-green-300"
+            >
+                Salva Immagine (.png)
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Variabile globale per l'istanza del QR Code
+        let qrcodeInstance = null;
+        
+        // Elementi DOM
+        const input = document.getElementById('dataInput');
+        const container = document.getElementById('qrcodeContainer');
+        const saveButton = document.getElementById('saveButton');
+        const messageArea = document.getElementById('messageArea');
+        const placeholderText = document.getElementById('qrPlaceholderText');
+        const generateButton = document.getElementById('generateButton');
+
+        /**
+         * Mostra un messaggio all'utente nell'area messaggi UI.
+         * @param {string} message Il testo del messaggio.
+         * @param {string} type Il tipo di messaggio ('success' o 'error').
+         */
+        function showMessage(message, type = 'error') {
+            messageArea.textContent = message;
+            messageArea.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            
+            if (type === 'error') {
+                messageArea.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageArea.classList.add('bg-green-100', 'text-green-700');
+            }
+
+            // Nasconde il messaggio dopo 5 secondi
+            setTimeout(() => {
+                messageArea.classList.add('hidden');
+            }, 5000);
+        }
+
+        /**
+         * Genera il QR Code basato sull'input dell'utente.
+         */
+        function generateQRCode() {
+            const data = input.value.trim();
+            
+            // 1. Validazione
+            if (!data) {
+                showMessage("Inserisci il testo o l'URL da codificare.", 'error');
+                return;
+            }
+
+            generateButton.textContent = "Generazione in corso...";
+            generateButton.disabled = true;
+
+            try {
+                // Rimuove qualsiasi istanza precedente di QR Code
+                if (qrcodeInstance) {
+                    container.innerHTML = '';
+                    qrcodeInstance = null;
+                }
+                placeholderText.classList.add('hidden');
+                
+                // 2. Generazione del QR Code
+                // qrcode.js accetta un elemento DOM o il suo ID.
+                qrcodeInstance = new QRCode(container, {
+                    text: data,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.L // Corrisponde a ERROR_CORRECT_L di Python
+                });
+
+                // 3. Mostra i controlli di salvataggio
+                saveButton.classList.remove('hidden');
+                showMessage("QR Code generato con successo!", 'success');
+
+            } catch (e) {
+                console.error("Errore di generazione:", e);
+                showMessage("Errore di Generazione: " + e.message, 'error');
+                saveButton.classList.add('hidden');
+                placeholderText.classList.remove('hidden');
+            } finally {
+                generateButton.textContent = "Genera QR Code";
+                generateButton.disabled = false;
+            }
+        }
+
+        /**
+         * Salva il QR Code (dal canvas) come file PNG.
+         */
+        function saveQRCode() {
+            const canvas = container.querySelector('canvas');
+            
+            if (!canvas) {
+                showMessage("Nessun QR Code da salvare. Generane uno per iniziare.", 'error');
+                return;
+            }
+
+            try {
+                // Converte il canvas in un URL dati immagine
+                const imageURL = canvas.toDataURL("image/png"); 
+                
+                // Crea un link invisibile per forzare il download
+                const link = document.createElement('a');
+                link.href = imageURL;
+                link.download = 'qrcode_' + Date.now() + '.png'; // Nome file dinamico
+
+                // Simula il click sul link per avviare il download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showMessage("Immagine salvata!", 'success');
+
+            } catch (e) {
+                console.error("Errore di salvataggio:", e);
+                showMessage("Errore durante il salvataggio dell'immagine.", 'error');
+            }
+        }
+    </script>
+
+</body>
+</html>
